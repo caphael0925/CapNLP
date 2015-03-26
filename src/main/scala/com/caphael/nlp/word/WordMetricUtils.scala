@@ -61,7 +61,7 @@ class WordMetricUtils extends Serializable{
                        ,sentencesCountL:Long=0L
                        ,maxWordLen:Int=WordMetricUtils.DEFAULT_MAX_WORD_LENGTH
                        ,delta:Double=WordMetricUtils.DEFAULT_DELTA): RDD[IndependenceMetric] ={
-    val sentencesCount:Long = if(sentencesCountL!=0L) {
+    val sentencesCount:Long = if(sentencesCountL>0L) {
       sentencesCountL
     } else {
       input.count
