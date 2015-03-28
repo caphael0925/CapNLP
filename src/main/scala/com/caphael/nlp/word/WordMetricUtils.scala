@@ -84,7 +84,7 @@ object WordMetricUtils extends Serializable{
 
 
     //Calculate independence rank of each character sequence and filter the entry above delta
-    getIndependence(termSeqProbsUnion).filter(x=>x(Independence)>=delta)
+    getIndependence(termSeqProbsUnion).filter(x=>x.METRICS(Independence)>=delta)
   }
 
   def discover(input:RDD[String]): Unit ={

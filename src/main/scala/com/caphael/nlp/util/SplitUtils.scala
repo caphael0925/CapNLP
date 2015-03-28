@@ -41,16 +41,15 @@ object SplitUtils{
       .filter(x=>PUNC_DILIM.r.findFirstIn(x)==None)
   }
 
-  def neighbourSplit(neighbours:Int,distinct:Boolean=false)(tsm:TermMetric):Array[TermMetric]={
+  def neighbourSplit(neighbours:Int,distinct:Boolean)(tsm:TermMetric):Array[TermMetric]={
     val ret:Array[TermMetric] = tsm.SUBTERMS.sliding(neighbours).map{case(x)=>
       TermMetric(x.map(_.ID).mkString,MetricMap(),x)
-
     }.toArray
 
     if(distinct) ret.distinct else ret
   }
 
-  def neighbourSplit(subSplit:(String)=>Array[String],neighbours:Int,distinct:Boolean=false)(line:String):Array[String]={
+  def neighbourSplit(subSplit:(String)=>Array[String],neighbours:Int,distinct:Boolean)(line:String):Array[String]={
     val ret = subSplit(line).sliding(neighbours).toArray.map(_.mkString)
     if(distinct) ret.distinct else ret
   }}

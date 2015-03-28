@@ -2,7 +2,7 @@ package com.caphael.nlp.word
 
 import com.caphael.nlp.metric.MetricType.MetricType
 
-import scala.collection.mutable.{Map=>MetricMap}
+import scala.collection.mutable.{HashMap=>MetricMap}
 /**
 * Created by caphael on 15/3/26.
 */
