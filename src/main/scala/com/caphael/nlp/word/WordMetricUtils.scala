@@ -12,14 +12,18 @@ import com.caphael.nlp.metric.MetricType._
 */
 object WordMetricUtils extends Serializable{
 
-  //App parameters
-  val VERSION = "0.1.0"
-  val APPNAME = "Word Discover "+VERSION
+  object DEFAULT{
+    //App parameters
+    val VERSION = "0.1.0"
+    val APPNAME = "Word Discover "+VERSION
 
 
-  //Independence calculator parameters
-  val DEFAULT_MAX_WORD_LENGTH = 6
-  val DEFAULT_DELTA = 0.9
+    //Independence calculator parameters
+    val MAX_WORD_LENGTH = 6
+    val MIN_WORD_FREQUENCY = 2
+    val DELTA = 100
+  }
+
 
 
   /*
@@ -38,12 +42,13 @@ object WordMetricUtils extends Serializable{
   *   input:RDD[String]     Sentences
   *   sentencesCount:Long   Count of sentences
   *   maxWordLen:Int     The maximum of the words to discovery, the words whose length above it would be ignore
-  *   delta:Double          The threshold of independence of chars in one word, the words whose chars independence below it would be ignore
+  *   delta:Double          The threshold of independence(the ratio between probability of the term and product of subterms probabilities,it means a multiple), the term whose independence below it would be ignore
   * */
   def getMetrics(input:RDD[String]
                        ,sentencesCountL:Long=0L
-                       ,maxWordLen:Int=WordMetricUtils.DEFAULT_MAX_WORD_LENGTH
-                       ,delta:Double=WordMetricUtils.DEFAULT_DELTA): RDD[TermMetric] ={
+                       ,maxWordLen:Int=DEFAULT.MAX_WORD_LENGTH
+                       ,minWordFreq:Int=DEFAULT.MIN_WORD_FREQUENCY
+                       ,delta:Double=DEFAULT.DELTA): RDD[TermMetric] ={
     val sentencesCount:Long = if(sentencesCountL>0L) {
       sentencesCountL
     } else {
@@ -51,12 +56,12 @@ object WordMetricUtils extends Serializable{
     }
 
     //Term splitting
-    val unFlatTerms:RDD[Array[String]] = input.map(SplitUtils.Lucene.standardSplit(false)(_)).cache
+    val unFlatTerms:RDD[Array[String]] = input.map(SplitUtils.Lucene.standardSplit(false)(_)).filter(!_.isEmpty).cache
 
     //Calc the term-frequencies
     val flatTerms:RDD[String] = unFlatTerms.flatMap(x=>x.distinct)
     val flatInitTermMetrics:RDD[TermMetric] = flatTerms.map(x=>TermMetric(x,MetricMap()))
-    val termFreq:RDD[TermMetric] = getFrequencies(flatInitTermMetrics)
+    val termFreq:RDD[TermMetric] = getFrequencies(flatInitTermMetrics).filter(_.METRICS(Frequency)>=minWordFreq)
     val termProb:RDD[TermMetric] = getProbabilities(termFreq,sentencesCount)
 
     //Generate the term-prob dictionary
@@ -69,18 +74,17 @@ object WordMetricUtils extends Serializable{
       val initTermSeqMetrics:RDD[TermMetric] = unFlatTerms.map{
         case(x) => TermMetric(x.mkString
           ,MetricMap()
-          ,x.map(termProbDict(_)))
-      }
+          ,x.map(termProbDict.getOrElse(_,TermMetric.NULL)))
+      }.filter(x=>x.SUBTERMS.forall(_!=TermMetric.NULL))
 
       val flatTermSeqMetrics:RDD[TermMetric] = initTermSeqMetrics.flatMap(SplitUtils.neighbourSplit(i,true)(_))
-      val termSeqFreq:RDD[TermMetric] = getFrequencies(flatTermSeqMetrics)
+      val termSeqFreq:RDD[TermMetric] = getFrequencies(flatTermSeqMetrics).filter(_.METRICS(Frequency)>=minWordFreq)
       val termSeqProb:RDD[TermMetric] = getProbabilities(termSeqFreq,sentencesCount)
       termSeqProb
     }
 
     //Union all the word probabilities
     val termSeqProbsUnion = termSeqProbs.reduceLeft(_.union(_))
-
 
 
     //Calculate independence rank of each character sequence and filter the entry above delta

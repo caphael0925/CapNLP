@@ -34,4 +34,6 @@ object TermMetric extends Serializable{
   def apply(id:String,mm:MetricMap[MetricType,Double],st:Array[TermMetric]):TermMetric = new TermMetric(id,mm,st)
   def apply(id:String,mm:MetricMap[MetricType,Double]):TermMetric = apply(id,mm,null)
   def apply(id:String):TermMetric = apply(id,MetricMap[MetricType,Double]())
+
+  val NULL = new TermMetric("\000",null,null)
 }

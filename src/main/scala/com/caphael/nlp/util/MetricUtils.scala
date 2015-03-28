@@ -20,19 +20,20 @@ object MetricUtils {
   }
 
   def getProbabilities(input:RDD[TermMetric],totalL:Long):RDD[TermMetric]={
-    input.foreach(x=>x.METRICS(Probability)=x.METRICS(Frequency)/totalL.toDouble)
-    input
+    input.map{case(x:TermMetric)=>
+      x.METRICS(Probability)=x.METRICS(Frequency)/totalL.toDouble
+      x}
   }
 
   def getIndependence(input:RDD[TermMetric]):RDD[TermMetric] = {
 
-    def calcIndependence(termSeqMetric: TermMetric): Unit ={
+    def calcIndependence(termSeqMetric: TermMetric): TermMetric ={
       val subTerms:Array[TermMetric] = termSeqMetric.SUBTERMS
       val jointProb:Double = subTerms.map(_.METRICS(Probability)).reduce(_*_)
-      termSeqMetric.METRICS(Independence)=jointProb/termSeqMetric.METRICS(Probability)
+      termSeqMetric.METRICS(Independence)=termSeqMetric.METRICS(Probability)/jointProb
+      termSeqMetric
     }
 
-    input.foreach(calcIndependence(_))
-    input
+    input.map(calcIndependence(_))
   }
 }
