@@ -1,9 +1,4 @@
-import com.caphael.nlp.metric.MetricType._
-import com.caphael.nlp.util.MetricUtils._
-import com.caphael.nlp.util.{HadoopUtils, SplitUtils}
-import com.caphael.nlp.word.{WordMetricUtils => wm, TermMetric}
-import org.apache.spark.rdd.RDD
-import org.apache.spark.{SparkContext, SparkConf}
+
 
 /**
 * Created by caphael on 15/3/25.
@@ -15,6 +10,15 @@ object IndependenceStepTest extends App{
   import com.caphael.nlp.util.SplitUtils
   import com.caphael.nlp.word.{WordMetricUtils => wm}
   import org.apache.spark.{SparkContext, SparkConf}
+  import com.caphael.nlp.dictlib.CharCharDicHandler
+  import com.caphael.nlp.metric.MetricType._
+  import com.caphael.nlp.metric.MetricUtils
+  import com.caphael.nlp.hadoop.HDFSHandler
+  import MetricUtils._
+  import com.caphael.nlp.predeal.PredealUtils
+  import com.caphael.nlp.word.{WordMetricUtils => wm, TermMetric}
+  import org.apache.spark.rdd.RDD
+  import org.apache.spark.{SparkContext, SparkConf}
 
   val conf = new SparkConf().setAppName("Test").setMaster("local")
   val sc = new SparkContext(conf)
@@ -22,8 +26,8 @@ object IndependenceStepTest extends App{
 //  System.setProperty("spark.master","local")
 
   //Control parameters
-  val recalcTermProb = false
-  val recalcTermSeqMetricsUnion = false
+  val recalcTermProb = true
+  val recalcTermSeqMetricsUnion = true
   //===============================
 
   val inputp="hdfs://Caphael-MBP:9000/user/caphael/SparkWorkspace/NLP/WordDiscover/input.txt"
@@ -36,7 +40,7 @@ object IndependenceStepTest extends App{
   val minWordFreq=2
   val delta=100
 
-  val hdfs = HadoopUtils.hdfsHandler(inputp)
+  val hdfs = HDFSHandler(inputp)
 
   val inputRaw = sc.textFile(inputp).map(_.split(",",2)(1))
   val input = wm.flatten(inputRaw,SplitUtils.sentenceSplit).distinct
@@ -47,8 +51,13 @@ object IndependenceStepTest extends App{
     input.count
   }
 
+  //Predeal
+  val dicPath = "library/common"
+  val dic = (new CharCharDicHandler).getDic(dicPath)
+  val inputPredealed = input.map(PredealUtils.charDicReplace(dic)(_))
+
   //Term splitting
-  val unFlatTerms:RDD[Array[String]] = input.map(SplitUtils.Lucene.standardSplit(false)(_)).filter(!_.isEmpty).cache
+  val unFlatTerms:RDD[Array[String]] = inputPredealed.map(SplitUtils.Lucene.standardSplit(false)(_)).filter(!_.isEmpty).cache
 
   val termProb:RDD[TermMetric] = if(recalcTermProb){
     val flatTerms:RDD[String] = unFlatTerms.flatMap(x=>x.distinct)
@@ -93,7 +102,7 @@ object IndependenceStepTest extends App{
   }
 
   //Calculate independence rank of each character sequence and filter the entry above delta
-  val res = getIndependence(termSeqProbsUnion).filter(x=>x.METRICS(Independence)>=delta)
+  val res = getRelevance(termSeqProbsUnion).filter(x=>x.METRICS(Relevance)>=delta)
 
 
 //  val res = wm.getMetrics(inputDealed)

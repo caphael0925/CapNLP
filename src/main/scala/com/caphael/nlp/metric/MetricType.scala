@@ -5,6 +5,6 @@ package com.caphael.nlp.metric
  */
 object MetricType extends Enumeration{
   type MetricType = Value
-  val Frequency,Probability,Independence = Value
+  val Frequency,Probability,Relevance = Value
   val Counter = Value
 }

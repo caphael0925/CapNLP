@@ -1,10 +1,11 @@
 package com.caphael.nlp.util
 
+import com.caphael.nlp.metric.MetricUtils
 import com.caphael.nlp.word.TermMetric
 import org.apache.lucene.analysis.Analyzer
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
-import com.caphael.nlp.util.MetricUtils.MetricMap
+import MetricUtils.MetricMap
 
 /**
  * Created by caphael on 15/3/27.
@@ -21,7 +22,10 @@ object SplitUtils{
       val termAttr = tokenStream.addAttribute(classOf[CharTermAttribute])
       tokenStream.reset()
 
-      def terms:Stream[String]= Stream.cons( {tokenStream.incrementToken ;  new String(termAttr.buffer,0,termAttr.length) }, terms)
+      def terms:Stream[String]= Stream.cons( {
+        tokenStream.incrementToken ;
+        new String(termAttr.buffer,0,termAttr.length) }
+      , terms)
       val ret = terms.takeWhile(!_.isEmpty).toArray
 
       if (distinct) ret.distinct else ret

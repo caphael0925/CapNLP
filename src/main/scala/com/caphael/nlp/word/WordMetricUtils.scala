@@ -1,6 +1,9 @@
 package com.caphael.nlp.word
 
-import com.caphael.nlp.util.MetricUtils._
+import com.caphael.nlp.dictlib.CharCharDicHandler
+import com.caphael.nlp.metric.MetricUtils
+import MetricUtils._
+import com.caphael.nlp.predeal.PredealUtils
 import com.caphael.nlp.util.SplitUtils
 import org.apache.spark.rdd.RDD
 import scala.collection.mutable.Map
@@ -23,8 +26,6 @@ object WordMetricUtils extends Serializable{
     val MIN_WORD_FREQUENCY = 2
     val DELTA = 100
   }
-
-
 
   /*
   * Flatten the lines by <split> function
@@ -55,8 +56,13 @@ object WordMetricUtils extends Serializable{
       input.count
     }
 
+    //Predeal
+    val dicPath = "library/common"
+    val dic = (new CharCharDicHandler).getDic(dicPath)
+    val inputPredealed = input.map(PredealUtils.charDicReplace(dic)(_))
+
     //Term splitting
-    val unFlatTerms:RDD[Array[String]] = input.map(SplitUtils.Lucene.standardSplit(false)(_)).filter(!_.isEmpty).cache
+    val unFlatTerms:RDD[Array[String]] = inputPredealed.map(SplitUtils.Lucene.standardSplit(false)(_)).filter(!_.isEmpty).cache
 
     //Calc the term-frequencies
     val flatTerms:RDD[String] = unFlatTerms.flatMap(x=>x.distinct)
@@ -88,7 +94,7 @@ object WordMetricUtils extends Serializable{
 
 
     //Calculate independence rank of each character sequence and filter the entry above delta
-    getIndependence(termSeqProbsUnion).filter(x=>x.METRICS(Independence)>=delta)
+    getRelevance(termSeqProbsUnion).filter(x=>x.METRICS(Relevance)>=delta)
   }
 
   def discover(input:RDD[String]): Unit ={

@@ -1,10 +1,10 @@
-package com.caphael.nlp.util
+package com.caphael.nlp.metric
 
 import com.caphael.nlp.metric.MetricType._
 import com.caphael.nlp.word.TermMetric
 import org.apache.spark.rdd.RDD
 
-import scala.collection.mutable.{HashMap, Map}
+import scala.collection.mutable.HashMap
 /**
 * Created by caphael on 15/3/27.
 */
@@ -25,15 +25,13 @@ object MetricUtils {
       x}
   }
 
-  def getIndependence(input:RDD[TermMetric]):RDD[TermMetric] = {
+  def getRelevance(input:RDD[TermMetric]):RDD[TermMetric] = {
 
-    def calcIndependence(termSeqMetric: TermMetric): TermMetric ={
+    input.map{case(termSeqMetric)=>
       val subTerms:Array[TermMetric] = termSeqMetric.SUBTERMS
       val jointProb:Double = subTerms.map(_.METRICS(Probability)).reduce(_*_)
-      termSeqMetric.METRICS(Independence)=termSeqMetric.METRICS(Probability)/jointProb
+      termSeqMetric.METRICS(Relevance)=termSeqMetric.METRICS(Probability)/jointProb
       termSeqMetric
     }
-
-    input.map(calcIndependence(_))
   }
 }
