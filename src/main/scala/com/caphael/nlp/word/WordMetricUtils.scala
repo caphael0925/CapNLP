@@ -6,7 +6,6 @@ import MetricUtils._
 import com.caphael.nlp.predeal.PredealUtils
 import com.caphael.nlp.util.SplitUtils
 import org.apache.spark.rdd.RDD
-import scala.collection.mutable.Map
 
 import com.caphael.nlp.metric.MetricType._
 

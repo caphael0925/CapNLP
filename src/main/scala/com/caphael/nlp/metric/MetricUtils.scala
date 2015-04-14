@@ -34,4 +34,9 @@ object MetricUtils {
       termSeqMetric
     }
   }
+
+//  def getNeighbourEntropy(input:RDD[TermMetric]):RDD[TermMetric] = {
+//
+//
+//  }
 }

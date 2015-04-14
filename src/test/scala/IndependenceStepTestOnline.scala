@@ -5,18 +5,19 @@
 */
 
 
-object IndependenceStepTest extends App{
+object IndependenceStepTestOnline extends App{
 
-  import com.caphael.nlp.util.SplitUtils
-  import com.caphael.nlp.word.{WordMetricUtils => wm}
   import com.caphael.nlp.dictlib.CharCharDicHandler
-  import com.caphael.nlp.metric.MetricType._
-  import com.caphael.nlp.metric.MetricUtils
   import com.caphael.nlp.hadoop.HDFSHandler
+  import com.caphael.nlp.metric.MetricType._
   import com.caphael.nlp.predeal.PredealUtils
-  import com.caphael.nlp.word.{WordMetricUtils => wm, TermMetric}
+  import com.caphael.nlp.metric.MetricUtils._
+  import com.caphael.nlp.util.SplitUtils
+  import com.caphael.nlp.word.{TermMetric, WordMetricUtils => wm}
   import org.apache.spark.rdd.RDD
-  import org.apache.spark.{SparkContext, SparkConf}
+
+
+  import org.apache.spark.{SparkConf, SparkContext}
 
   val conf = new SparkConf().setAppName("Test").setMaster("local")
   val sc = new SparkContext(conf)
@@ -28,10 +29,10 @@ object IndependenceStepTest extends App{
   val recalcTermSeqMetricsUnion = true
   //===============================
 
-  val inputp="hdfs://Caphael-MBP:9000/user/caphael/SparkWorkspace/NLP/WordDiscover/input.txt"
-  val outputp=inputp+".out"
-  val termSeqProbsUnion_path = "hdfs://Caphael-MBP:9000/user/caphael/SparkWorkspace/NLP/WordDiscover/TermSeqProbsUnion"
-  val termProb_path = "hdfs://Caphael-MBP:9000/user/caphael/SparkWorkspace/NLP/WordDiscover/TermProb"
+  val inputp="hdfs://namenode125:9000/user/root/Recommendation/CB/SignStats/WordDiscover/input"
+  val outputp="hdfs://namenode125:9000/user/root/Recommendation/CB/SignStats/WordDiscover/output"
+  val termSeqProbsUnion_path = "hdfs://namenode125:9000/user/root/Recommendation/CB/SignStats/WordDiscover/TermSeqProbsUnion"
+  val termProb_path = "hdfs://namenode125:9000/user/root/Recommendation/CB/SignStats/WordDiscover/TermProb"
 
   val sentencesCountL = 0L
   val maxWordLen=2
@@ -40,7 +41,7 @@ object IndependenceStepTest extends App{
 
   val hdfs = HDFSHandler(inputp)
 
-  val inputRaw = sc.textFile(inputp).map(_.split(",",2)(1))
+  val inputRaw = sc.textFile(inputp)
   val input = wm.flatten(inputRaw,SplitUtils.sentenceSplit).distinct
 
   val sentencesCount:Long = if(sentencesCountL>0L) {
