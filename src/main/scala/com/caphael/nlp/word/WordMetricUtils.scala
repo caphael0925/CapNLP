@@ -2,12 +2,14 @@ package com.caphael.nlp.word
 
 import com.caphael.nlp.dictlib.CharCharDicHandler
 import com.caphael.nlp.metric.MetricUtils
-import MetricUtils._
+import com.caphael.nlp.metric.MetricUtils._
 import com.caphael.nlp.predeal.PredealUtils
 import com.caphael.nlp.util.SplitUtils
 import org.apache.spark.rdd.RDD
 
 import com.caphael.nlp.metric.MetricType._
+
+import scala.collection.mutable.HashMap
 
 /**
 * Created by caphael on 15/3/25.
@@ -22,9 +24,12 @@ object WordMetricUtils extends Serializable{
 
     //Independence calculator parameters
     val MAX_WORD_LENGTH = 6
-    val MIN_WORD_FREQUENCY = 2
-    val DELTA = 100
+    val MIN_WORD_FREQUENCY = 3
+    val RELE_DELTA = 10
+    val ETPY_DELTA = 1
   }
+
+  val neighbourSplit = SplitUtils.neighbourSplit(2,false) _
 
   /*
   * Flatten the lines by <split> function
@@ -45,55 +50,81 @@ object WordMetricUtils extends Serializable{
   *   delta:Double          The threshold of independence(the ratio between probability of the term and product of subterms probabilities,it means a multiple), the term whose independence below it would be ignore
   * */
   def getMetrics(input:RDD[String]
-                       ,sentencesCountL:Long=0L
+                       ,charCountL:Long=0L
                        ,maxWordLen:Int=DEFAULT.MAX_WORD_LENGTH
                        ,minWordFreq:Int=DEFAULT.MIN_WORD_FREQUENCY
-                       ,delta:Double=DEFAULT.DELTA): RDD[TermMetric] ={
-    val sentencesCount:Long = if(sentencesCountL>0L) {
-      sentencesCountL
+                       ,relevance_delta:Double=DEFAULT.RELE_DELTA
+                       ,entropy_delta:Double=DEFAULT.ETPY_DELTA): RDD[TermMetric] ={
+    val charCount:Long = if(charCountL>0L) {
+      charCountL
     } else {
-      input.count
+      input.map(_.length).reduce(_+_)
     }
+
+    //
 
     //Predeal
-    val dicPath = "library/common"
-    val dic = (new CharCharDicHandler).getDic(dicPath)
-    val inputPredealed = input.map(PredealUtils.charDicReplace(dic)(_))
+    val inputPredealed = predeal(input);
 
     //Term splitting
-    val unFlatTerms:RDD[Array[String]] = inputPredealed.map(SplitUtils.Lucene.standardSplit(false)(_)).filter(!_.isEmpty).cache
+    val unFlatTerms:RDD[Array[String]] = inputPredealed.map(SplitUtils.Lucene.standardSplit(false)(_)).filter(!_.isEmpty)
+    val flatTerms:RDD[String] = unFlatTerms.flatMap(x=>x)
 
-    //Calc the term-frequencies
-    val flatTerms:RDD[String] = unFlatTerms.flatMap(x=>x.distinct)
-    val flatInitTermMetrics:RDD[TermMetric] = flatTerms.map(x=>TermMetric(x,MetricMap()))
-    val termFreq:RDD[TermMetric] = getFrequencies(flatInitTermMetrics).filter(_.METRICS(Frequency)>=minWordFreq)
-    val termProb:RDD[TermMetric] = getProbabilities(termFreq,sentencesCount)
+    //Initialize Single Term Metric Dictionary
+    val singleTermFreq:RDD[TermMetric] = getFrequenciesByString(flatTerms)
+    val singleTermProb:RDD[TermMetric] = getProbabilities(singleTermFreq,charCount)
+    ////Generate the term-prob dictionary(1 char)
+    val singleTermMetricMap = singleTermProb.map(x=>(x.ID,x)).collect.toMap
 
-    //Generate the term-prob dictionary
-    val termProbDict = termProb.map(x=>(x.ID,x)).collect.toMap
+    //Initialize Terms into TermMetrics(With Sliding Grouping)
+    ////Function that Initialize Array[String] to Array[TermMetricNode](which contained neighbourhood information)
+    val initTermMetricsFun:(Array[String])=>Array[TermMetricNode] = initTermMetricsProtype(singleTermMetricMap) _
+    ////Array[String] => Array[TermMetricNode]
+    val initTermMetricNodes:RDD[Array[TermMetricNode]] = unFlatTerms.map(initTermMetricsFun(_))
+    ////Merge two neighbouring TermMetricNodes into one with Sliding Window(length=2)
+    val termMetricNodesSliding:RDD[TermMetricNode] = initTermMetricNodes.filter(_.length>1).flatMap(neighbourSplit(_))
 
-    //Calc the term-sequences frequencies
-    val termSeqProbs = for(i<-2 to maxWordLen) yield {
+    //Initialize Neighbouring Terms Metric Dictionary
+    val neighbourTermFreq:RDD[TermMetric] = getFrequenciesByTermMetric(termMetricNodesSliding.map(_.CORE)).filter(x=>x.METRICS(Frequency)>=minWordFreq)
+    val neighbourTermProb:RDD[TermMetric] = getProbabilities(neighbourTermFreq,charCount)
 
-      //Initialize TermSeqMetric by
-      val initTermSeqMetrics:RDD[TermMetric] = unFlatTerms.map{
-        case(x) => TermMetric(x.mkString
-          ,MetricMap()
-          ,x.map(termProbDict.getOrElse(_,TermMetric.NULL)))
-      }.filter(x=>x.SUBTERMS.forall(_!=TermMetric.NULL))
+    //Calculate Relevance between Neighbouring Terms
+    val neighbourTermRele:RDD[TermMetric] = getRelevance(neighbourTermProb).filter(x=>x.METRICS(Relevance)>relevance_delta)
 
-      val flatTermSeqMetrics:RDD[TermMetric] = initTermSeqMetrics.flatMap(SplitUtils.neighbourSplit(i,true)(_))
-      val termSeqFreq:RDD[TermMetric] = getFrequencies(flatTermSeqMetrics).filter(_.METRICS(Frequency)>=minWordFreq)
-      val termSeqProb:RDD[TermMetric] = getProbabilities(termSeqFreq,sentencesCount)
-      termSeqProb
+    val neighbourTermEtpy:RDD[TermMetric] = getEntropy(termMetricNodesSliding).
+      filter(x=>x.METRICS(LeftEntropy)>entropy_delta&&x.METRICS(RightEntropy)>entropy_delta)
+
+    val neighbourTermMetric:RDD[TermMetric] = neighbourTermEtpy.map(x=>(x.ID,x)).join(neighbourTermRele.map(x=>(x.ID,x))).
+      map{
+      case(id,ms) => ms._1.METRICS++=ms._2.METRICS ; ms._1
     }
 
-    //Union all the word probabilities
-    val termSeqProbsUnion = termSeqProbs.reduceLeft(_.union(_))
+    neighbourTermMetric
+ }
 
+  def predeal(input:RDD[String]): RDD[String] ={
+    val dicPath = "library/common"
+    val dic = (new CharCharDicHandler).getDic(dicPath)
+    input.map(PredealUtils.charDicReplace(dic)(_))
+  }
 
-    //Calculate independence rank of each character sequence and filter the entry above delta
-    getRelevance(termSeqProbsUnion).filter(x=>x.METRICS(Relevance)>=delta)
+  def createTermMetricDict(input:RDD[String]):HashMap[String,TermMetric]={
+    HashMap(input.distinct.map(x=>(x,TermMetric(x))).collect:_*)
+  }
+
+  def initTermMetricsProtype(dic: Map[String,TermMetric])(terms:Array[String]):Array[TermMetricNode]={
+
+    val ret:Array[TermMetricNode] = terms.map(x=>TermMetricNode(dic.getOrElse(x,TermMetric.TM_NULL)))
+    ret.reduce{(l:TermMetricNode,r:TermMetricNode)=>{l.NEXTID=r.ID;r.PREVID=l.ID;r}}
+    ret
+  }
+
+  def initTermNodes(terms:IndexedSeq[String]):IndexedSeq[TermNode]={
+    val ret:IndexedSeq[TermNode] = terms.map(x=>TermNode(x))
+    ret.reduce{
+      (l:TermNode,r:TermNode)=>{l.NEXTID=r.ID;r.PREVID=l.ID;r}
+    }
+    ret
   }
 
   def discover(input:RDD[String]): Unit ={
