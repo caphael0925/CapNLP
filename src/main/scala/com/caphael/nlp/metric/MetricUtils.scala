@@ -56,10 +56,16 @@ object MetricUtils {
   def getEntropy(input:RDD[TermMetricNode]): RDD[TermMetric] ={
     //Functions
     def _getStringArrayEntropy(strArr:IndexedSeq[String]):Double = {
-      val strArrNoneNull = strArr.filter(_!=null)
+      val (strArrNull,strArrNoneNull) = strArr.partition(_==null)
       val countVec = strArrNoneNull.groupBy(x=>x).map(_._2.length.toDouble)
       val countAll = strArrNoneNull.length.toDouble
-      -countVec.map(_/countAll).map(x=>x*log(x)).sum
+      val ret = -countVec.map(_/countAll).map(x=>x*log(x)).sum
+
+      if(!strArrNull.isEmpty){
+        ret+1
+      }else{
+        ret
+      }
     }
 
     def _getTermMetricNodeArrayEntropy(tmnArr:IndexedSeq[TermMetricNode]):MetricMap = {

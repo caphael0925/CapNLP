@@ -1,7 +1,6 @@
 package com.caphael.nlp.util
 
-import com.caphael.nlp.metric.MetricMap
-import com.caphael.nlp.word.{TermNode, TermMetricNode, TermMetric}
+import com.caphael.nlp.word.TermMetricNode
 import org.apache.lucene.analysis.Analyzer
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute

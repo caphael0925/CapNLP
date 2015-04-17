@@ -15,7 +15,7 @@ object DiscoverTest extends App{
   val outputp=inputp+".out"
 
   val inputRaw = sc.textFile(inputp)
-  val input = wm.flatten(inputRaw,SplitUtils.sentenceSplit).distinct
+  val input = wm.flatten(inputRaw,SplitUtils.sentenceSplit).distinct.repartition(20)
 
   val res = wm.getMetrics(input,-1,2,5,30,1)
 

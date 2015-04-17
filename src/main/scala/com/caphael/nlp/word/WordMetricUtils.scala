@@ -21,12 +21,15 @@ object WordMetricUtils extends Serializable{
     val VERSION = "0.1.0"
     val APPNAME = "Word Discover "+VERSION
 
+    //Spark parameters
+    val PARTITION_SIZE=2 * 10^5
 
-    //Independence calculator parameters
+    //Metric calculator parameters
     val MAX_WORD_LENGTH = 6
     val MIN_WORD_FREQUENCY = 3
     val RELE_DELTA = 10
     val ETPY_DELTA = 1
+
   }
 
   val neighbourSplit = SplitUtils.neighbourSplit(2,false) _
@@ -61,10 +64,11 @@ object WordMetricUtils extends Serializable{
       input.map(_.length).reduce(_+_)
     }
 
-    //
+    val partitionNum:Int = charCount.toInt/DEFAULT.PARTITION_SIZE
+    val partInput = input.repartition(partitionNum)
 
     //Predeal
-    val inputPredealed = predeal(input);
+    val inputPredealed = predeal(partInput);
 
     //Term splitting
     val unFlatTerms:RDD[Array[String]] = inputPredealed.map(SplitUtils.Lucene.standardSplit(false)(_)).filter(!_.isEmpty)
@@ -138,7 +142,6 @@ object WordMetricUtils extends Serializable{
 
 
   }
-
 }
 
 
