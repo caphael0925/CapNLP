@@ -1,11 +1,11 @@
 
 /**
- * Created by caphael on 15/3/29.
- */
+* Created by caphael on 15/3/29.
+*/
 object DiscoverTest extends App{
 
   import com.caphael.nlp.util.SplitUtils
-  import com.caphael.nlp.word.{WordMetricUtils => wm}
+  import com.caphael.nlp.word.WordMetricUtils._
   import org.apache.spark.{SparkContext, SparkConf}
 
   val conf = new SparkConf().setAppName("Test").setMaster("local")
@@ -15,8 +15,8 @@ object DiscoverTest extends App{
   val outputp=inputp+".out"
 
   val inputRaw = sc.textFile(inputp)
-  val input = wm.flatten(inputRaw,SplitUtils.sentenceSplit).distinct.repartition(20)
+  val input = flatten(inputRaw,SplitUtils.sentenceSplit).distinct.repartition(20)
 
-  val res = wm.getMetrics(input,-1,2,5,30,1)
+  val res = discover(input)
 
 }

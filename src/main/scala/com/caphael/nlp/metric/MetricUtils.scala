@@ -32,8 +32,8 @@ object MetricUtils {
   }
 
   def getFrequenciesByTermNode(input:RDD[TermNode]):RDD[TermMetric]={
-    input.map(x=>(x,1.0)).reduceByKey(_+_).map{
-      case(tn,f)=>TermMetric(tn.ID,MetricMap(Frequency->f))
+    input.map(x=>(x.ID,1.0)).reduceByKey(_+_).map{
+      case(id,f)=>TermMetric(id,MetricMap(Frequency->f))
     }
   }
 
@@ -47,13 +47,13 @@ object MetricUtils {
 
     input.map{case(termSeqMetric)=>
       val subTerms:Array[TermMetric] = termSeqMetric.SUBTERMS
-      val jointProb:Double = subTerms.map(_.METRICS(Probability)).reduce(_*_)
+      val jointProb:Double = subTerms.map(_(Probability)).reduce(_*_)
       termSeqMetric.METRICS(Relevance)=termSeqMetric.METRICS(Probability)/jointProb
       termSeqMetric
     }
   }
 
-  def getEntropy(input:RDD[TermMetricNode]): RDD[TermMetric] ={
+  def getEntropy(input:RDD[TermNode]): RDD[TermMetric] ={
     //Functions
     def _getStringArrayEntropy(strArr:IndexedSeq[String]):Double = {
       val (strArrNull,strArrNoneNull) = strArr.partition(_==null)
@@ -68,7 +68,7 @@ object MetricUtils {
       }
     }
 
-    def _getTermMetricNodeArrayEntropy(tmnArr:IndexedSeq[TermMetricNode]):MetricMap = {
+    def _getTermNodeArrayEntropy(tmnArr:IndexedSeq[TermNode]):MetricMap = {
       val (leftVec,rightVec) = tmnArr.map(x=>(x.PREVID,x.NEXTID)).unzip
       val ret = MetricMap()
       ret(LeftEntropy) = _getStringArrayEntropy(leftVec)
@@ -76,8 +76,8 @@ object MetricUtils {
       ret
     }
 
-    input.groupBy(x=>x.CORE).map{
-      case(tm,tmnSeq)=>tm.METRICS++=_getTermMetricNodeArrayEntropy(tmnSeq.toIndexedSeq);tm
+    input.groupBy(x=>x).map{
+      case(tn,tnSeq)=>TermMetric(tn.ID,_getTermNodeArrayEntropy(tnSeq.toIndexedSeq))
     }
 
   }

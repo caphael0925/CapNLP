@@ -1,6 +1,6 @@
 package com.caphael.nlp.util
 
-import com.caphael.nlp.word.TermMetricNode
+import com.caphael.nlp.word.{TermNode, TermMetricNode}
 import org.apache.lucene.analysis.Analyzer
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
@@ -43,22 +43,23 @@ object SplitUtils{
       .filter(x=>PUNC_DILIM.r.findFirstIn(x)==None)
   }
 
-  def neighbourSplit(neighbours:Int=2,distinct:Boolean)(tsm:Array[TermMetricNode]):Array[TermMetricNode]={
-    val ret:Array[TermMetricNode] = tsm.sliding(neighbours).map{case(x)=>
-      x.reduce(_+_)
-    }.toArray
-
-    if(distinct) ret.distinct else ret
-  }
-
-//  def neighbourSplit(neighbours:Int=2,distinct:Boolean)(tnSeq:IndexedSeq[TermNode]):IndexedSeq[TermNode]={
-//    val ret:IndexedSeq[TermNode] = tnSeq.sliding(neighbours).
-//      map{
-//        case(x)=>x.reduce(_+_)
-//    }.toIndexedSeq
+  //这个步骤不能动，不然的话Previd和nextid的信息就没了
+//  def neighbourSplit(neighbours:Int=2,distinct:Boolean)(tsm:Array[TermMetricNode]):Array[TermMetricNode]={
+//    val ret:Array[TermMetricNode] = tsm.sliding(neighbours).map{case(x)=>
+//      x.reduce(_+_)
+//    }.toArray
 //
 //    if(distinct) ret.distinct else ret
 //  }
+
+  def neighbourSplit(neighbours:Int=2,distinct:Boolean)(tnSeq:IndexedSeq[TermNode]):IndexedSeq[TermNode]={
+    val ret:IndexedSeq[TermNode] = tnSeq.sliding(neighbours).
+      map{
+        x=>x.reduce(_+_)
+    }.toIndexedSeq
+
+    if(distinct) ret.distinct else ret
+  }
 
   def neighbourSplit(subSplit:(String)=>Array[String],neighbours:Int,distinct:Boolean)(line:String):Array[String]={
     val ret = subSplit(line).sliding(neighbours).toArray.map(_.mkString)

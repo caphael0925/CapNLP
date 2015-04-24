@@ -28,7 +28,7 @@ class TermNode(private val id:String,
 
   override def toString:String = {
     {
-      if (TermMetricNode.OUTNEIGHBOURS) {
+      if (TermNode.OUTNEIGHBOURS) {
         "[" + prev + "]" + id + "[" + next + "]"
       } else {
         id
