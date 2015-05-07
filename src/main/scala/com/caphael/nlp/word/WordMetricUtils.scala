@@ -28,6 +28,9 @@ object WordMetricUtils extends Serializable{
     val RELE_DELTA = 20
     val ETPY_DELTA = 1.5
 
+    //Internal parameters
+//    val LEFTETPY_ZOOM = 1.0
+
   }
 
 
@@ -114,7 +117,7 @@ object WordMetricUtils extends Serializable{
       val termMetricEntr4Curr:RDD[TermMetric] = termMetricEntr.
         filter(x=>x.METRICS(LeftEntropy)>entropy_delta&&x.METRICS(RightEntropy)>entropy_delta)
       val termMetricEntr4Temp:RDD[TermMetric] = termMetricEntr.
-        filter(x=> !(x.METRICS(LeftEntropy)>entropy_delta&&x.METRICS(RightEntropy)>entropy_delta))
+        filter(x=> (x.METRICS(LeftEntropy)<=entropy_delta&&x.METRICS(RightEntropy)<=entropy_delta))
 
       //Merge Metrics into one
       val currentResult:RDD[TermMetric] = termMetricRele.map(x=>(x.ID,x)).join(termMetricEntr4Curr.map(x=>(x.ID,x))).

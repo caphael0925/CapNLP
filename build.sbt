@@ -13,3 +13,4 @@ libraryDependencies += "org.apache.spark" % "spark-yarn_2.10" % "1.3.0" % "provi
 
 libraryDependencies += "org.apache.lucene" % "lucene-analyzers-common" % "5.0.0"
 
+libraryDependencies += "com.hankcs" % "hanlp" % "portable-1.1.5"

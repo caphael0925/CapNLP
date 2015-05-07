@@ -11,10 +11,10 @@ object DiscoverTest extends App{
   val conf = new SparkConf().setAppName("Test").setMaster("local")
   val sc = new SparkContext(conf)
 
-  val inputp="hdfs://Caphael-MBP:9000/user/caphael/SparkWorkspace/NLP/WordDiscover/input.txt"
+  val inputp="SparkWorkspace/TextMining/WordDiscovery/sign.input"
   val outputp=inputp+".out"
 
-  val inputRaw = sc.textFile(inputp)
+  val inputRaw = sc.textFile(inputp).map(_.split(",",2)(1))
   val input = flatten(inputRaw,SplitUtils.sentenceSplit).distinct.repartition(20)
 
   val res = discover(input)
